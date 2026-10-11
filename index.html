@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Sydney Live</title>
+    <meta name="description" content="A realtime 3D dashboard of Sydney's weather and public transport, built on open government data." />
+    <meta name="theme-color" content="#efe8db" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23efe8db'/%3E%3Crect x='7' y='12' width='5' height='13' fill='%23d6c09c'/%3E%3Crect x='14' y='6' width='5' height='19' fill='%23c9ad80'/%3E%3Crect x='21' y='15' width='4' height='10' fill='%23d6c09c'/%3E%3Ccircle cx='24' cy='9' r='3' fill='%23f6891f'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap" rel="stylesheet" />
+  </head>
+  <body data-tab="weather">
+    <div id="map"></div>
+    <canvas id="deck"></canvas>
+
+    <header class="masthead">
+      <h1>Sydney <span>live</span></h1>
+      <p><time id="clock"></time> <span id="conn" class="conn">Connecting</span></p>
+    </header>
+
+    <nav class="tabs" aria-label="Panels">
+      <button data-tab="weather" aria-selected="true">Weather</button>
+      <button data-tab="transport" aria-selected="false">Transport</button>
+    </nav>
+
+    <aside class="rail rail-weather" aria-label="Weather">
+      <section id="now" class="now"><p class="quiet">Reading the Bureau of Meteorology…</p></section>
+      <section id="forecast" class="forecast"></section>
+      <section id="warnings" class="warnings"></section>
+    </aside>
+
+    <aside class="rail rail-transport" aria-label="Public transport">
+      <section id="modes" class="modes"><p class="quiet">Connecting to Transport for NSW…</p></section>
+      <section id="alerts" class="alerts"></section>
+    </aside>
+
+    <footer class="dock">
+      <div class="group" role="group" aria-label="Camera">
+        <button data-view="city">City</button>
+        <button data-view="harbour">Harbour</button>
+        <button data-view="sydney">Greater Sydney</button>
+      </div>
+      <div class="group" role="group" aria-label="Layers">
+        <button id="radar-toggle" aria-pressed="true">Rain radar <time id="radar-time"></time></button>
+        <button id="stations-toggle" aria-pressed="true">Temperatures</button>
+      </div>
+      <details id="feeds" class="feeds"><summary>Feeds</summary></details>
+      <p class="credits">
+        Unofficial. Data:
+        <a href="https://www.bom.gov.au/other/copyright.shtml" target="_blank" rel="noopener">Bureau of Meteorology</a>,
+        <a href="https://opendata.transport.nsw.gov.au" target="_blank" rel="noopener">Transport for NSW</a> (CC BY 4.0).
+        Map: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a>,
+        <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>.
+      </p>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
