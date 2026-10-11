@@ -1,7 +1,11 @@
 node_modules/
 dist/
+.wrangler/
+.firebase/
 .env
 .env.*
 !.env.example
+!.env.production
+.dev.vars*
 .DS_Store
 *.log

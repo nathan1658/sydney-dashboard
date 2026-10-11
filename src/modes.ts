@@ -1,4 +1,4 @@
-import type { Mode } from '../server/tfnsw.ts'
+import type { Mode } from '../server/types.ts'
 
 type ModeStyle = {
   name: string

@@ -1,7 +1,7 @@
 // Client-side vehicle tracks. Positions arrive every ~20 s; we render a fixed
 // LAG behind real time so every vehicle is always between two known fixes and
 // moves smoothly instead of jumping.
-import type { Mode, WireTrack } from '../server/tfnsw.ts'
+import type { Mode, WireTrack } from '../server/types.ts'
 
 export const LAG = 45
 export const TRAIL = 90

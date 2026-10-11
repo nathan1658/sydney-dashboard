@@ -7,8 +7,8 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { Deck, FlyToInterpolator, type MapViewState, type PickingInfo } from '@deck.gl/core'
 import { ColumnLayer, PathLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers'
-import type { Radar, Station } from '../server/bom.ts'
-import type { Mode } from '../server/tfnsw.ts'
+import type { Mode, Radar, Station } from '../server/types.ts'
+import { api } from './live.ts'
 import { mapStyle } from './mapstyle.ts'
 import { MODES } from './modes.ts'
 import { tempRgb } from './temperature.ts'
@@ -202,7 +202,7 @@ export async function setRadar(r: Radar): Promise<void> {
   }
   for (const f of r.frames) {
     if (map.getSource(f.url)) continue
-    map.addSource(f.url, { type: 'image', url: f.url, coordinates: r.bounds as [[number, number], [number, number], [number, number], [number, number]] })
+    map.addSource(f.url, { type: 'image', url: api(f.url), coordinates: r.bounds as [[number, number], [number, number], [number, number], [number, number]] })
     map.addLayer(
       {
         id: f.url,
@@ -244,13 +244,21 @@ const ago = (t: number): string => {
   return s < 90 ? `${s}s ago` : `${Math.round(s / 60)} min ago`
 }
 
+// GTFS route ids carry agency prefixes ("2510_960", "9-F4-sj2-1", "1001_L3");
+// riders know the short name. Train ids have none, so the headsign label speaks.
+function routeName(t: Track): string {
+  if (t.mode === 'bus') return t.route.split('_').pop() ?? ''
+  if (t.route.startsWith('IWLR')) return 'L1'
+  return /(?:^|[_-])([MLF]\d+)/.exec(t.route)?.[1] ?? ''
+}
+
 function tooltip({ object, layer }: PickingInfo) {
   if (!object) return null
   let html = ''
   if (layer?.id === 'vehicles') {
     const t = object as Track
     const m = MODES[t.mode]
-    html = `<div class="tip-head"><span class="badge" style="--c:rgb(${m.rgb.join(' ')})">${m.letter}</span>${esc(t.route || m.name)}</div>
+    html = `<div class="tip-head"><span class="badge" style="--c:rgb(${m.rgb.join(' ')})">${m.letter}</span>${esc(routeName(t) || m.name)}</div>
       ${t.label ? `<div class="tip-body">${esc(t.label)}</div>` : ''}
       <div class="tip-meta">GPS fix ${ago(t.pts[t.pts.length - 1])}</div>`
   } else if (layer?.id === 'stations') {

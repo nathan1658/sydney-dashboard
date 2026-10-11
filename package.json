@@ -5,19 +5,21 @@
   "type": "module",
   "description": "Realtime 3D city dashboard for Sydney built on open government data (BoM, Transport for NSW).",
   "license": "MIT",
-  "engines": {
-    "node": ">=23.6"
-  },
+  "engines": {},
   "scripts": {
-    "dev": "node --watch --env-file-if-exists=.env server/main.ts --dev",
+    "dev": "vite",
     "build": "vite build",
-    "start": "node --env-file-if-exists=.env server/main.ts",
-    "check": "tsc"
+    "check": "tsc && tsc -p server",
+    "deploy:api": "wrangler deploy",
+    "deploy:web": "vite build && firebase deploy --only hosting",
+    "deploy": "npm run deploy:api && npm run deploy:web"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261011.1",
     "@types/node": "^26.6.5",
     "typescript": "^7.0.2",
-    "vite": "^8.3.4"
+    "vite": "^8.3.4",
+    "wrangler": "^4.149.0"
   },
   "overrides": {
     "@loaders.gl/core": "4.5.2",
@@ -30,7 +32,6 @@
   "dependencies": {
     "@deck.gl/core": "^9.4.0",
     "@deck.gl/layers": "^9.4.0",
-    "basic-ftp": "^6.2.3",
     "fast-xml-parser": "^5.11.2",
     "gtfs-realtime-bindings": "^2.2.0",
     "maplibre-gl": "^6.13.0"

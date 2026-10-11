@@ -111,6 +111,17 @@ h2 span { letter-spacing: 0.06em; font-weight: 500; }
   font-variant-numeric: tabular-nums;
   color: var(--ink-2);
 }
+.source {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  padding: 5px;
+  border-radius: 3px;
+  color: var(--ink-2);
+}
+.source:hover { background: var(--paper-2); color: var(--ink); }
+.source svg { width: 18px; height: 18px; }
 .conn { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-3); }
 .conn::before {
   content: '';
@@ -458,6 +469,8 @@ h2 span { letter-spacing: 0.06em; font-weight: 500; }
   .masthead { min-width: 0; right: var(--gutter); padding: 9px 12px; display: flex; align-items: baseline; justify-content: space-between; }
   .masthead p { margin: 0; }
   .masthead #clock { display: none; }
+  .masthead p { margin-left: auto; }
+  .source { position: static; order: 2; margin: -5px -6px -5px 6px; align-self: center; }
 
   .dock {
     top: 60px;

@@ -1,8 +1,6 @@
 // The two rails (weather, transport), the feed status and the clock. Each
 // section re-renders from its own slice of state; upstream text is escaped.
-import type { Day, Station, Warning } from '../server/bom.ts'
-import type { Health } from '../server/jobs.ts'
-import type { Alert, Mode, Punctuality } from '../server/tfnsw.ts'
+import type { Alert, Day, Health, Mode, Punctuality, Station, Warning } from '../server/types.ts'
 import { forecastIcon } from './icons.ts'
 import { MODE_ORDER, MODES } from './modes.ts'
 import { tempGradient } from './temperature.ts'
@@ -89,15 +87,16 @@ function renderForecast(): void {
     <h2>Seven days</h2>
     <ol>${days
       .map((d, i) => {
-        const min = d.min ?? d.max ?? lo
-        const max = d.max ?? min
+        // Late in the day BoM drops today's temperatures: no bar, no stray degree sign.
+        const min = d.min ?? d.max
+        const max = d.max ?? d.min
         const name = i === 0 ? 'Today' : time(d.date, { weekday: 'short' })
         return `<li title="${esc(d.summary)}">
           <span class="day">${name}</span>
           <span class="icon">${forecastIcon(d.icon)}</span>
           <span class="lo">${d.min ?? ''}</span>
-          <span class="range"><i style="left:${pct(min)}%;right:${100 - pct(max)}%;background:${tempGradient(min, max)}"></i></span>
-          <span class="hi">${d.max ?? ''}°</span>
+          <span class="range">${min === null || max === null ? '' : `<i style="left:${pct(min)}%;right:${100 - pct(max)}%;background:${tempGradient(min, max)}"></i>`}</span>
+          <span class="hi">${d.max === null ? '' : `${d.max}°`}</span>
           <span class="pop">${d.rainChance ? `${d.rainChance}%` : ''}</span>
         </li>`
       })

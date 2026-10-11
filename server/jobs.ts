@@ -1,6 +1,8 @@
-// Polls each upstream feed on its own cadence, but only while someone is
-// watching: no open dashboards means no upstream requests and no API quota.
-import { hasClients, publish } from './hub.ts'
+// Polls each upstream feed on its own cadence. The Durable Object calls
+// tick() from its alarm and sleeps until the next job is due, but only while
+// someone is watching: no open dashboards means no upstream requests.
+import { publish } from './hub.ts'
+import type { Health } from './types.ts'
 
 export type Job = {
   name: string
@@ -9,34 +11,28 @@ export type Job = {
   snapshot?: () => unknown
 }
 
-export type Health = { name: string; ok: boolean; at: number; error?: string }
-
+const last = new Map<string, number>()
 const health = new Map<string, Health>()
 
 export const feedHealth = (): Health[] => [...health.values()]
 
-export function start(jobs: Job[]): void {
-  const last = new Map<string, number>()
-  const busy = new Set<string>()
+// Runs every due job (together) and returns when the next one falls due.
+export async function tick(jobs: Job[]): Promise<number> {
+  const now = Date.now()
+  const due = jobs.filter(j => now - (last.get(j.name) ?? 0) >= j.every * 1000)
+  await Promise.all(due.map(run))
+  return Math.min(...jobs.map(j => (last.get(j.name) ?? 0) + j.every * 1000))
+}
 
-  setInterval(() => {
-    if (!hasClients()) return
-    for (const job of jobs) {
-      if (busy.has(job.name) || Date.now() - (last.get(job.name) ?? 0) < job.every * 1000) continue
-      busy.add(job.name)
-      job
-        .run()
-        .then(data => {
-          publish(job.name, data, job.snapshot)
-          report(job.name)
-        })
-        .catch((err: unknown) => report(job.name, err))
-        .finally(() => {
-          last.set(job.name, Date.now())
-          busy.delete(job.name)
-        })
-    }
-  }, 1000)
+async function run(job: Job): Promise<void> {
+  try {
+    publish(job.name, await job.run(), job.snapshot)
+    report(job.name)
+  } catch (err) {
+    report(job.name, err)
+  } finally {
+    last.set(job.name, Date.now())
+  }
 }
 
 function report(name: string, err?: unknown): void {

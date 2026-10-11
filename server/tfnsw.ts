@@ -1,16 +1,16 @@
 // Transport for NSW Open Data: GTFS-realtime vehicle positions, trip updates
 // and service alerts. Free API key: https://opendata.transport.nsw.gov.au
+import { env } from 'cloudflare:workers'
 import GtfsRealtime from 'gtfs-realtime-bindings'
+import type { Alert, Mode, Punctuality, WireTrack } from './types.ts'
 
 const { FeedMessage } = GtfsRealtime.transit_realtime
 const API = 'https://api.transport.nsw.gov.au/'
 
-export type Mode = 'train' | 'metro' | 'lightrail' | 'ferry' | 'bus'
-
 const VEHICLE_FEEDS: [Mode, string][] = [
   ['train', 'v2/gtfs/vehiclepos/sydneytrains'],
   ['metro', 'v2/gtfs/vehiclepos/metro'],
-  ['lightrail', 'v1/gtfs/vehiclepos/lightrail/innerwest'],
+  ['lightrail', 'v2/gtfs/vehiclepos/lightrail/innerwest'],
   ['lightrail', 'v1/gtfs/vehiclepos/lightrail/cbdandsoutheast'],
   ['lightrail', 'v1/gtfs/vehiclepos/lightrail/parramatta'],
   ['ferry', 'v1/gtfs/vehiclepos/ferries/sydneyferries'],
@@ -29,7 +29,7 @@ const ALERT_FEEDS: [Mode, string][] = [
   ['bus', 'v2/gtfs/alerts/buses'],
 ]
 
-export const VEHICLE_SECONDS = Number(process.env.VEHICLE_POLL_SECONDS ?? 20)
+export const VEHICLE_SECONDS = 20
 const TRAIL_SECONDS = 150
 const GONE_SECONDS = 300
 
@@ -37,7 +37,7 @@ const GONE_SECONDS = 300
 type Feed = { header: { timestamp?: number }; entity?: Record<string, any>[] }
 
 async function feed(path: string): Promise<Feed> {
-  const key = process.env.TFNSW_API_KEY
+  const key = env.TFNSW_API_KEY
   if (!key) throw new Error('TFNSW_API_KEY is not set (see README)')
   const res = await fetch(API + path, {
     headers: { Authorization: `apikey ${key}` },
@@ -48,9 +48,18 @@ async function feed(path: string): Promise<Feed> {
   return FeedMessage.toObject(msg, { longs: Number, enums: String }) as Feed
 }
 
-// One request at a time keeps us under TfNSW's per-second rate limit. A
-// failing feed is logged and skipped; only a total failure fails the job.
-async function feeds(list: [Mode, string][]): Promise<[Mode, string, Feed][]> {
+// One request at a time, across all jobs, keeps us under TfNSW's per-second
+// rate limit, and jobs that start together finish in order (vehicles first).
+let queue: Promise<unknown> = Promise.resolve()
+
+function feeds(list: [Mode, string][]): Promise<[Mode, string, Feed][]> {
+  const run = queue.then(() => fetchAll(list))
+  queue = run.catch(() => {})
+  return run
+}
+
+// A failing feed is logged and skipped; only a total failure fails the job.
+async function fetchAll(list: [Mode, string][]): Promise<[Mode, string, Feed][]> {
   const out: [Mode, string, Feed][] = []
   const errors: string[] = []
   for (const [mode, path] of list) {
@@ -77,9 +86,6 @@ type Track = {
   points: number[] // flat [lon, lat, t, lon, lat, t, ...], t in epoch seconds
   seen: number
 }
-
-// Wire format: [id, mode, route, label, bearing, points]
-export type WireTrack = [string, Mode, string, string, number | null, number[]]
 
 const tracks = new Map<string, Track>()
 const round = (x: number): number => Math.round(x * 1e5) / 1e5
@@ -132,18 +138,17 @@ export async function vehicles(): Promise<WireTrack[]> {
 
 // --- Punctuality --------------------------------------------------------
 
-export type Punctuality = { mode: Mode; running: number; onTime: number; avgDelay: number; cancelled: number }
-
 const LATE_SECONDS = 5 * 60 // Sydney Trains' on-time standard for suburban services
 
 // A trip counts as running when a vehicle on it reported its position in the
 // last two polls. That holds however the feed shapes its stop lists.
 export async function punctuality(): Promise<Punctuality[]> {
+  const trips = await feeds(TRIP_FEEDS)
   const now = Date.now() / 1000
   const running = new Set<string>()
   for (const t of tracks.values()) if (t.trip && now - t.seen < VEHICLE_SECONDS * 2.5) running.add(t.trip)
 
-  return (await feeds(TRIP_FEEDS)).map(([mode, , msg]) => {
+  return trips.map(([mode, , msg]) => {
     let measured = 0
     let onTime = 0
     let delaySum = 0
@@ -169,17 +174,6 @@ export async function punctuality(): Promise<Punctuality[]> {
 }
 
 // --- Alerts -------------------------------------------------------------
-
-export type Alert = {
-  id: string
-  mode: Mode
-  effect: string
-  title: string
-  detail: string
-  url: string | null
-  start: number | null
-  end: number | null
-}
 
 function text(ts: Record<string, any> | undefined): string {
   const tr: Record<string, any>[] = ts?.translation ?? []

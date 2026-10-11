@@ -1,0 +1,14 @@
+// The live API Worker. Local: `npm run dev` runs it through `wrangler dev`.
+// Deploy: `npm run deploy:api`. The TfNSW key is a secret, never a var:
+// `npx wrangler secret put TFNSW_API_KEY`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sydney-dashboard",
+  "main": "server/worker.ts",
+  "compatibility_date": "2026-09-01",
+  "durable_objects": {
+    "bindings": [{ "name": "LIVE", "class_name": "Live" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Live"] }],
+  "observability": { "enabled": true }
+}
